@@ -22,7 +22,9 @@ type Info map[string]interface{}
 func getMinifiedStack() string {
 	stack := ""
 	for i := 3; i < 90; i++ {
-		_, fn, line, _ := runtime.Caller(i)
+		pc, fn, line, _ := runtime.Caller(i)
+		f := runtime.FuncForPC(pc)
+
 		if fn == "" {
 			break
 		}
@@ -40,9 +42,9 @@ func getMinifiedStack() string {
 		}
 		fn = strings.Join(split[n:], string(os.PathSeparator))
 		if hl {
-			stack += fmt.Sprintf(yellow("\n→ %s:%d"), fn, line)
+			stack += fmt.Sprintf(yellow("\t→ %s:%d ") + red("%s\n"), fn, line, f.Name())
 		} else {
-			stack += fmt.Sprintf(red("\n→ %s:%d"), fn, line)
+			stack += fmt.Sprintf(blue("\t→ %s:%d ") + red("%s\n"), fn, line, f.Name())
 		}
 	}
 	return stack
@@ -54,10 +56,23 @@ func logMap(m map[string]interface{}) {
 	}
 }
 
-func logMapWithStack(m map[string]interface{}) {
+func WithStack(v ...interface{}) {
+		//color.Set(color.FgGreen)
+	_, fn, line, _ := runtime.Caller(1)
+	var split = strings.Split(fn, string(os.PathSeparator))
+	var n int
+	if len(split) >= 2 {
+		n = len(split) - 2
+	} else {
+		n = len(split)
+	}
+	fn = strings.Join(split[n:], string(os.PathSeparator))
+	format := strings.Repeat("%v ", len(v))
+	message := fmt.Sprintf(format, v...)
+	log.Printf(blue("%s:%d ") + green("%s"), fn, line, message)
+	color.Unset()
 	stack := getMinifiedStack()
-	log.Printf(stack)
-	logMap(m)
+	fmt.Print(stack)
 }
 
 func LogError(info Info) {
