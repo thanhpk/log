@@ -5,9 +5,8 @@ import (
 	"os"
 	"fmt"
 	"runtime"
-	"log"
+	"time"
 	"github.com/fatih/color"
-	"runtime/debug"
 )
 
 var (
@@ -17,93 +16,7 @@ var (
 	yellow = color.New(color.FgYellow).SprintFunc()
 )
 
-type Info map[string]interface{}
-
-func getMinifiedStack() string {
-	stack := ""
-	for i := 3; i < 90; i++ {
-		pc, fn, line, _ := runtime.Caller(i)
-		f := runtime.FuncForPC(pc)
-
-		if fn == "" {
-			break
-		}
-		hl := false // highlight
-		if strings.Contains(fn, "bitbucket.org/subiz") {
-			hl = true
-		}
-		var split = strings.Split(fn, string(os.PathSeparator))
-		var n int
-
-		if len(split) >= 2 {
-			n = len(split) - 2
-		} else {
-			n = len(split)
-		}
-		fn = strings.Join(split[n:], string(os.PathSeparator))
-		if hl {
-			stack += fmt.Sprintf(yellow("\t→ %s:%d ") + red("%s\n"), fn, line, f.Name())
-		} else {
-			stack += fmt.Sprintf(blue("\t→ %s:%d ") + red("%s\n"), fn, line, f.Name())
-		}
-	}
-	return stack
-}
-
-func logMap(m map[string]interface{}) {
-	for key, value := range m {
-    printlog("%s: %s", key, fmt.Sprintf("%v", value))
-	}
-}
-
-func WithStack(v ...interface{}) {
-		//color.Set(color.FgGreen)
-	_, fn, line, _ := runtime.Caller(1)
-	var split = strings.Split(fn, string(os.PathSeparator))
-	var n int
-	if len(split) >= 2 {
-		n = len(split) - 2
-	} else {
-		n = len(split)
-	}
-	fn = strings.Join(split[n:], string(os.PathSeparator))
-	format := strings.Repeat("%v ", len(v))
-	message := fmt.Sprintf(format, v...)
-	log.Printf(blue("%s:%d ") + green("%s"), fn, line, message)
-	color.Unset()
-	stack := getMinifiedStack()
-	fmt.Print(stack)
-}
-
-func LogError(info Info) {
-//	info["stacktrace"] = fmt.Sprintf("%s", debug.Stack())
-	logMap(info)
-}
-
-func LogPanic(info Info) {
-	info["stacktrace"] = fmt.Sprintf("%s", debug.Stack())
-	logMap(info)
-}
-
-// Log print anything to stdout
-func printlog(f interface{}, v ...interface{}) {
-	format, ok := f.(string)
-	if !ok {
-		v = append([]interface{}{f}, v...)
-		format = strings.Repeat("%v ", len(v))
-	}
-	//color.Set(color.FgGreen)
-
-	var message string
-	if len(v) > 0 {
-		message = fmt.Sprintf(format, v...)
-	} else {
-		message = format
-	}
-
-	fmt.Println(yellow("└ " + message))
-	color.Unset()
-}
+var starttime = time.Now()
 
 // Logf log with format to stdout
 func Logf(format string, v ...interface{}) {
@@ -117,7 +30,7 @@ func Logf(format string, v ...interface{}) {
 	}
 	fn = strings.Join(split[n:], string(os.PathSeparator))
 	message := fmt.Sprintf(format, v...)
-	log.Printf(blue("%s:%d ") + green("%s"), fn, line, message)
+	fmt.Printf(getCurrentTimeString() + blue("%s:%d ") + green("%s") + "\n", fn, line, message)
 	color.Unset()
 }
 
@@ -135,6 +48,29 @@ func Log(v ...interface{}) {
 	fn = strings.Join(split[n:], string(os.PathSeparator))
 	format := strings.Repeat("%v ", len(v))
 	message := fmt.Sprintf(format, v...)
-	log.Printf(blue("%s:%d ") + green("%s"), fn, line, message)
+
+	fmt.Printf(getCurrentTimeString() + blue("%s:%d ") + green("%s") + "\n", fn, line, message)
 	color.Unset()
+}
+
+func getCurrentTimeString() string {
+	now := time.Now()
+	m := fmt.Sprintf("%d", int(now.Month()))
+	if m == "10" {
+		m = "O"
+	} else if m == "11" {
+		m = "N"
+	} else if m == "12" {
+		m = "D"
+	}
+
+	var ds string
+	d := now.Day()
+	if d > 9 {
+		ds = string(rune(d + 87))
+	} else {
+		ds = string(rune(d + 48))
+	}
+	return m + ds + fmt.Sprintf("%d %d:%d:%d ", int(time.Since(starttime).Seconds()),
+		now.Hour(), now.Minute(), now.Second())
 }
